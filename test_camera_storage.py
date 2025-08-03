@@ -1,43 +1,38 @@
 import unittest
 import psycopg2
-from datetime import date, timedelta
 from camera_storage import CameraStorage
 
-DSN = "dbname=testdb user=postgres password=postgres host=127.0.0.1"
+DSN = "dbname=testdb user=postgres password=postgres host=localhost port=5432"
 
 class TestCameraStorage(unittest.TestCase):
     def setUp(self):
         self.conn = psycopg2.connect(DSN)
+        self.conn.autocommit = True
         self.storage = CameraStorage(self.conn)
+
+        # Ensure clean test table
+        with self.conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS cameras;")
         self.storage.create_table()
-        self.storage.clear_table()
 
     def tearDown(self):
-        self.storage.clear_table()
         self.conn.close()
 
     def test_insert_and_fetch(self):
-        self.storage.insert_camera("cam_001", "Test Camera")
-        state = self.storage.get_camera_state("cam_001")
-        self.assertIsNotNone(state)
-        self.assertEqual(state[0], date.today())
-        self.assertEqual(state[1], 0)
+        camera_id = self.storage.insert_camera("cam-001", "file001", 100)
+        camera = self.storage.get_camera_by_name("cam-001")
+        self.assertIsNotNone(camera)
+        self.assertEqual(camera[0], camera_id)
+        self.assertEqual(camera[1], "cam-001")
+        self.assertEqual(camera[2], "file001")
+        self.assertEqual(camera[3], 100)
+        self.assertEqual(camera[4], True)
 
-    def test_offset_update(self):
-        self.storage.insert_camera("cam_001")
-        self.storage.update_offset("cam_001", 512)
-        state = self.storage.get_camera_state("cam_001")
-        self.assertEqual(state[1], 512)
+    def test_update_offset(self):
+        self.storage.insert_camera("cam-002", "file002", 0)
+        self.storage.update_camera_offset("cam-002", 200)
+        updated = self.storage.get_camera_by_name("cam-002")
+        self.assertEqual(updated[3], 200)
 
-    def test_rotate_file(self):
-        self.storage.insert_camera("cam_001")
-        with self.conn.cursor() as cur:
-            cur.execute("UPDATE cameras SET active_file = %s WHERE camera_uid = %s;",
-                        (date.today() - timedelta(days=1), "cam_001"))
-        self.storage.rotate_file_if_needed("cam_001")
-        state = self.storage.get_camera_state("cam_001")
-        self.assertEqual(state[0], date.today())
-        self.assertEqual(state[1], 0)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
