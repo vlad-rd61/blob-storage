@@ -3,7 +3,7 @@ import psycopg2
 from datetime import date, timedelta
 from camera_storage import CameraStorage
 
-DSN = "dbname=testdb user=postgres password=secret host=127.0.0.1"
+DSN = "dbname=testdb user=postgres password=postgres host=127.0.0.1"
 
 class TestCameraStorage(unittest.TestCase):
     def setUp(self):
