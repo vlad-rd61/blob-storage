@@ -8,31 +8,28 @@ class TestCameraStorage(unittest.TestCase):
     def setUp(self):
         self.conn = psycopg2.connect(DSN)
         self.conn.autocommit = True
-        self.storage = CameraStorage(self.conn)
-
-        # Ensure clean test table
         with self.conn.cursor() as cur:
             cur.execute("DROP TABLE IF EXISTS cameras;")
-        self.storage.create_table()
+        self.storage = CameraStorage(self.conn)
 
     def tearDown(self):
         self.conn.close()
 
     def test_insert_and_fetch(self):
-        camera_id = self.storage.insert_camera("cam-001", "file001", 100)
-        camera = self.storage.get_camera_by_name("cam-001")
-        self.assertIsNotNone(camera)
-        self.assertEqual(camera[0], camera_id)
-        self.assertEqual(camera[1], "cam-001")
-        self.assertEqual(camera[2], "file001")
-        self.assertEqual(camera[3], 100)
-        self.assertEqual(camera[4], True)
+        cam_id = self.storage.insert_camera("cam01", "file01", 100, True)
+        cam = self.storage.fetch_camera("cam01")
+        self.assertIsNotNone(cam)
+        self.assertEqual(cam[0], cam_id)
+        self.assertEqual(cam[1], "cam01")
+        self.assertEqual(cam[2], "file01")
+        self.assertEqual(cam[3], 100)
+        self.assertTrue(cam[4])
 
     def test_update_offset(self):
-        self.storage.insert_camera("cam-002", "file002", 0)
-        self.storage.update_camera_offset("cam-002", 200)
-        updated = self.storage.get_camera_by_name("cam-002")
-        self.assertEqual(updated[3], 200)
+        self.storage.insert_camera("cam02", "file02", 0, True)
+        self.storage.update_offset("cam02", 500)
+        cam = self.storage.fetch_camera("cam02")
+        self.assertEqual(cam[3], 500)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

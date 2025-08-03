@@ -3,6 +3,7 @@ import psycopg2
 class CameraStorage:
     def __init__(self, conn):
         self.conn = conn
+        self.create_table()
 
     def create_table(self):
         with self.conn.cursor() as cur:
@@ -11,7 +12,7 @@ class CameraStorage:
                     id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL,
                     active_file TEXT,
-                    offset INTEGER DEFAULT 0,
+                    "offset" INTEGER DEFAULT 0,
                     is_active BOOLEAN DEFAULT TRUE
                 );
             """)
@@ -20,22 +21,26 @@ class CameraStorage:
     def insert_camera(self, name, active_file=None, offset=0, is_active=True):
         with self.conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO cameras (name, active_file, offset, is_active)
+                INSERT INTO cameras (name, active_file, "offset", is_active)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id;
             """, (name, active_file, offset, is_active))
-            cam_id = cur.fetchone()[0]
+            camera_id = cur.fetchone()[0]
             self.conn.commit()
-            return cam_id
+            return camera_id
 
-    def get_camera_by_name(self, name):
-        with self.conn.cursor() as cur:
-            cur.execute("SELECT * FROM cameras WHERE name = %s;", (name,))
-            return cur.fetchone()
-
-    def update_camera_offset(self, name, offset):
+    def update_offset(self, name, offset):
         with self.conn.cursor() as cur:
             cur.execute("""
-                UPDATE cameras SET offset = %s WHERE name = %s;
+                UPDATE cameras SET "offset" = %s WHERE name = %s;
             """, (offset, name))
             self.conn.commit()
+
+    def fetch_camera(self, name):
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, active_file, "offset", is_active
+                FROM cameras
+                WHERE name = %s;
+            """, (name,))
+            return cur.fetchone()
